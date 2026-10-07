@@ -10,8 +10,8 @@ A simple interactive shell for Linux/Unix-like systems, written in C using stand
 | --- | --- |
 | Srotaswini Das | Developer |
 | Sushant Bhat | Test Engineer |
-| SRK Akash | Team member |
-| Tarsh Choudhary | Team member |
+| SRK Akash | Product Owner |
+| Tarsh Choudhary | QA Lead |
 
 
 ## Repository Contents
