@@ -20,7 +20,6 @@ A simple interactive shell for Linux/Unix-like systems, written in C using stand
 | --- | --- | --- |
 | Software Requirements Specification (SRS) v1.0 | `SRS_Simple_Shell_Command_Line_Interpreter.docx` | Submitted |
 | Software Test Plan (STP) v1.0 | `Test_Plan_Simple_Shell.docx` | Submitted |
-| Architecture document | `Architecture_Simple_Shell.docx` *(file name to be confirmed)* | In progress, due **Wednesday, 07-10-2026** |
 
 The architecture document is prepared using the template provided by the instructor.
 
