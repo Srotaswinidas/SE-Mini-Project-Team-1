@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <sys/wait.h>
 
 #define INPUT_SIZE 1024
 #define MAX_ARGS 64
@@ -26,7 +27,6 @@ static char *find_executable(const char *cmd) {
     while (dir != NULL) {
         size_t size = strlen(dir) + strlen(cmd) + 2;
         char *candidate = malloc(size);
-
         if (candidate == NULL) {
             free(paths);
             return NULL;
@@ -60,7 +60,6 @@ int main(void) {
         }
 
         size_t len = strlen(line);
-
         if (len > 0 && line[len - 1] == '\n') {
             line[len - 1] = '\0';
         } else {
@@ -88,7 +87,6 @@ int main(void) {
             token = strtok(NULL, " \t\r");
         }
         args[argc] = NULL;
-
         if (argc == 0) continue;
 
         pid_t pid = fork();
@@ -97,13 +95,16 @@ int main(void) {
             perror("fork");
         } else if (pid == 0) {
             char *executable = find_executable(args[0]);
-
             if (executable != NULL) {
                 execv(executable, args);
                 free(executable);
             }
-
             _exit(127);
+        } else {
+            int status;
+            while (waitpid(pid, &status, 0) == -1) {
+                /* Retry if interrupted. */
+            }
         }
     }
 
