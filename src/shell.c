@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -8,6 +9,42 @@
 
 static int malformed(const char *line) {
     return strpbrk(line, "|;&<>") != NULL;
+}
+
+static char *find_executable(const char *cmd) {
+    if (strchr(cmd, '/')) return strdup(cmd);
+
+    const char *path = getenv("PATH");
+    if (path == NULL) return NULL;
+
+    char *paths = strdup(path);
+    if (paths == NULL) return NULL;
+
+    char *saveptr = NULL;
+    char *dir = strtok_r(paths, ":", &saveptr);
+
+    while (dir != NULL) {
+        size_t size = strlen(dir) + strlen(cmd) + 2;
+        char *candidate = malloc(size);
+
+        if (candidate == NULL) {
+            free(paths);
+            return NULL;
+        }
+
+        snprintf(candidate, size, "%s/%s", dir, cmd);
+
+        if (access(candidate, X_OK) == 0) {
+            free(paths);
+            return candidate;
+        }
+
+        free(candidate);
+        dir = strtok_r(NULL, ":", &saveptr);
+    }
+
+    free(paths);
+    return NULL;
 }
 
 int main(void) {
@@ -59,7 +96,13 @@ int main(void) {
         if (pid < 0) {
             perror("fork");
         } else if (pid == 0) {
-            execv(args[0], args);
+            char *executable = find_executable(args[0]);
+
+            if (executable != NULL) {
+                execv(executable, args);
+                free(executable);
+            }
+
             _exit(127);
         }
     }
