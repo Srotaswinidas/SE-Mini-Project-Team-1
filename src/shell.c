@@ -99,6 +99,17 @@ int main(void) {
             continue;
         }
 
+        if (strcmp(args[0], "pwd") == 0) {
+            char cwd[4096];
+
+            if (getcwd(cwd, sizeof(cwd))) {
+                printf("%s\n", cwd);
+            } else {
+                perror("pwd");
+            }
+            continue;
+        }
+
         pid_t pid = fork();
 
         if (pid < 0) {
