@@ -27,6 +27,7 @@ int main(void) {
                 while (ch != '\n' && ch != EOF) {
                     ch = getchar();
                 }
+
                 printf("Error: input line is too long.\n");
                 continue;
             }
