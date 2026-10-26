@@ -102,11 +102,17 @@ int main(void) {
         if (strcmp(args[0], "pwd") == 0) {
             char cwd[4096];
 
-            if (getcwd(cwd, sizeof(cwd))) {
-                printf("%s\n", cwd);
-            } else {
-                perror("pwd");
-            }
+            if (getcwd(cwd, sizeof(cwd))) printf("%s\n", cwd);
+            else perror("pwd");
+            continue;
+        }
+
+        if (strcmp(args[0], "help") == 0) {
+            printf("myshell - available built-in commands:\n");
+            printf("  cd [directory]  Change the current directory\n");
+            printf("  pwd             Print the current directory\n");
+            printf("  help            Display this help message\n");
+            printf("External commands are searched for using PATH.\n");
             continue;
         }
 
