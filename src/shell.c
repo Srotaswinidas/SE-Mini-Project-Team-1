@@ -1,8 +1,10 @@
 #include <stdio.h>
 #include <string.h>
 
+#define INPUT_SIZE 1024
+
 int main(void) {
-    char line[1024];
+    char line[INPUT_SIZE];
 
     while (1) {
         printf("myshell> ");
@@ -13,7 +15,22 @@ int main(void) {
             break;
         }
 
-        line[strcspn(line, "\n")] = '\0';
+        size_t len = strlen(line);
+
+        if (len > 0 && line[len - 1] == '\n') {
+            line[len - 1] = '\0';
+        } else {
+            int ch = getchar();
+
+            if (ch != '\n' && ch != EOF) {
+                while (ch != '\n' && ch != EOF) {
+                    ch = getchar();
+                }
+
+                printf("Error: input line is too long.\n");
+                continue;
+            }
+        }
 
         if (strspn(line, " \t\r") == strlen(line)) {
             continue;
