@@ -1,3 +1,5 @@
+#include <stdio.h>
+#include <string.h>
 
 int main(void) {
     char line[1024];
@@ -6,12 +8,17 @@ int main(void) {
         printf("myshell> ");
         fflush(stdout);
 
-        if (fgets(line, sizeof line, stdin) == NULL) {
+        if (fgets(line, sizeof(line), stdin) == NULL) {
             printf("\n");
             break;
         }
 
         line[strcspn(line, "\n")] = '\0';
+
+        if (strspn(line, " \t\r") == strlen(line)) {
+            continue;
+        }
+
         printf("You entered: %s\n", line);
     }
 
