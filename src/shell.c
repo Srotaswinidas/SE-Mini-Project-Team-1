@@ -4,6 +4,10 @@
 #define INPUT_SIZE 1024
 #define MAX_ARGS 64
 
+static int malformed(const char *line) {
+    return strpbrk(line, "|;&<>") != NULL;
+}
+
 int main(void) {
     char line[INPUT_SIZE];
 
@@ -27,10 +31,18 @@ int main(void) {
                 while (ch != '\n' && ch != EOF) {
                     ch = getchar();
                 }
-
                 printf("Error: input line is too long.\n");
                 continue;
             }
+        }
+
+        if (strspn(line, " \t\r") == strlen(line)) {
+            continue;
+        }
+
+        if (malformed(line)) {
+            printf("Error: unsupported shell operator.\n");
+            continue;
         }
 
         char *args[MAX_ARGS];
