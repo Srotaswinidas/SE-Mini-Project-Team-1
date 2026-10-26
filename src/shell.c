@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <sys/wait.h>
+#include <errno.h>
 
 #define INPUT_SIZE 1024
 #define MAX_ARGS 64
@@ -95,11 +96,16 @@ int main(void) {
             perror("fork");
         } else if (pid == 0) {
             char *executable = find_executable(args[0]);
-            if (executable != NULL) {
-                execv(executable, args);
-                free(executable);
+
+            if (executable == NULL) {
+                fprintf(stderr, "myshell: %s: command not found\n", args[0]);
+                _exit(127);
             }
-            _exit(127);
+
+            execv(executable, args);
+            perror(args[0]);
+            free(executable);
+            _exit(126);
         } else {
             int status;
             while (waitpid(pid, &status, 0) == -1) {
