@@ -9,39 +9,38 @@
 #define INPUT_SIZE 1024
 #define MAX_ARGS 64
 
-static int malformed(const char *line) {
-    return strpbrk(line, "|;&<>") != NULL;
+static int malformed(const char *s) {
+    return strpbrk(s, "|;&<>") != NULL;
 }
 
 static char *find_executable(const char *cmd) {
     if (strchr(cmd, '/')) return strdup(cmd);
 
     const char *path = getenv("PATH");
-    if (path == NULL) return NULL;
+    if (!path) return NULL;
 
     char *paths = strdup(path);
-    if (paths == NULL) return NULL;
+    if (!paths) return NULL;
 
-    char *saveptr = NULL;
-    char *dir = strtok_r(paths, ":", &saveptr);
+    char *save = NULL;
+    char *dir = strtok_r(paths, ":", &save);
 
-    while (dir != NULL) {
-        size_t size = strlen(dir) + strlen(cmd) + 2;
-        char *candidate = malloc(size);
-        if (candidate == NULL) {
+    while (dir) {
+        size_t n = strlen(dir) + strlen(cmd) + 2;
+        char *candidate = malloc(n);
+        if (!candidate) {
             free(paths);
             return NULL;
         }
 
-        snprintf(candidate, size, "%s/%s", dir, cmd);
-
+        snprintf(candidate, n, "%s/%s", dir, cmd);
         if (access(candidate, X_OK) == 0) {
             free(paths);
             return candidate;
         }
 
         free(candidate);
-        dir = strtok_r(NULL, ":", &saveptr);
+        dir = strtok_r(NULL, ":", &save);
     }
 
     free(paths);
@@ -55,13 +54,13 @@ int main(void) {
         printf("myshell> ");
         fflush(stdout);
 
-        if (fgets(line, sizeof(line), stdin) == NULL) {
+        if (!fgets(line, sizeof(line), stdin)) {
             printf("\n");
             break;
         }
 
         size_t len = strlen(line);
-        if (len > 0 && line[len - 1] == '\n') {
+        if (len && line[len - 1] == '\n') {
             line[len - 1] = '\0';
         } else {
             int ch = getchar();
@@ -73,7 +72,6 @@ int main(void) {
         }
 
         if (strspn(line, " \t\r") == strlen(line)) continue;
-
         if (malformed(line)) {
             printf("Error: unsupported shell operator.\n");
             continue;
@@ -83,12 +81,23 @@ int main(void) {
         int argc = 0;
         char *token = strtok(line, " \t\r");
 
-        while (token != NULL && argc < MAX_ARGS - 1) {
+        while (token && argc < MAX_ARGS - 1) {
             args[argc++] = token;
             token = strtok(NULL, " \t\r");
         }
         args[argc] = NULL;
-        if (argc == 0) continue;
+        if (!argc) continue;
+
+        if (strcmp(args[0], "cd") == 0) {
+            const char *target = args[1] ? args[1] : getenv("HOME");
+
+            if (!target) {
+                fprintf(stderr, "myshell: HOME is not set\n");
+            } else if (chdir(target) != 0) {
+                perror("cd");
+            }
+            continue;
+        }
 
         pid_t pid = fork();
 
@@ -97,19 +106,21 @@ int main(void) {
         } else if (pid == 0) {
             char *executable = find_executable(args[0]);
 
-            if (executable == NULL) {
+            if (!executable) {
                 fprintf(stderr, "myshell: %s: command not found\n", args[0]);
                 _exit(127);
             }
 
             execv(executable, args);
             perror(args[0]);
-            free(executable);
             _exit(126);
         } else {
             int status;
             while (waitpid(pid, &status, 0) == -1) {
-                /* Retry if interrupted. */
+                if (errno != EINTR) {
+                    perror("waitpid");
+                    break;
+                }
             }
         }
     }
