@@ -101,19 +101,23 @@ int main(void) {
 
         if (strcmp(args[0], "pwd") == 0) {
             char cwd[4096];
-
             if (getcwd(cwd, sizeof(cwd))) printf("%s\n", cwd);
             else perror("pwd");
             continue;
         }
 
         if (strcmp(args[0], "help") == 0) {
-            printf("myshell - available built-in commands:\n");
-            printf("  cd [directory]  Change the current directory\n");
-            printf("  pwd             Print the current directory\n");
-            printf("  help            Display this help message\n");
-            printf("External commands are searched for using PATH.\n");
+            printf("Built-in commands:\n");
+            printf("  cd [directory]  Change directory\n");
+            printf("  pwd             Print current directory\n");
+            printf("  help            Display help\n");
+            printf("  exit            Exit myshell\n");
+            printf("  history         Show command history (added in the next PR)\n");
             continue;
+        }
+
+        if (strcmp(args[0], "exit") == 0) {
+            break;
         }
 
         pid_t pid = fork();
@@ -142,5 +146,6 @@ int main(void) {
         }
     }
 
+    printf("Exiting myshell.\n");
     return 0;
 }
