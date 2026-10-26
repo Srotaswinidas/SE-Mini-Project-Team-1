@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
+#include <stdlib.h>
 
 #define INPUT_SIZE 1024
 #define MAX_ARGS 64
@@ -26,19 +28,14 @@ int main(void) {
             line[len - 1] = '\0';
         } else {
             int ch = getchar();
-
             if (ch != '\n' && ch != EOF) {
-                while (ch != '\n' && ch != EOF) {
-                    ch = getchar();
-                }
+                while (ch != '\n' && ch != EOF) ch = getchar();
                 printf("Error: input line is too long.\n");
                 continue;
             }
         }
 
-        if (strspn(line, " \t\r") == strlen(line)) {
-            continue;
-        }
+        if (strspn(line, " \t\r") == strlen(line)) continue;
 
         if (malformed(line)) {
             printf("Error: unsupported shell operator.\n");
@@ -53,17 +50,17 @@ int main(void) {
             args[argc++] = token;
             token = strtok(NULL, " \t\r");
         }
-
         args[argc] = NULL;
 
-        if (argc == 0) {
-            continue;
-        }
+        if (argc == 0) continue;
 
-        printf("Command: %s\n", args[0]);
+        pid_t pid = fork();
 
-        for (int i = 1; i < argc; i++) {
-            printf("Argument %d: %s\n", i, args[i]);
+        if (pid < 0) {
+            perror("fork");
+        } else if (pid == 0) {
+            execv(args[0], args);
+            _exit(127);
         }
     }
 
