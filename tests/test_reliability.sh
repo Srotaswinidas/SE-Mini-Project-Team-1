@@ -1,0 +1,21 @@
+#!/bin/bash
+set -e
+
+gcc -Wall -Wextra src/shell.c -o simple_shell
+
+# Test: 100 consecutive valid and invalid commands (SSH-NF-002 / TC-REL-01)
+cmd_input=""
+for i in {1..50}; do
+    cmd_input+="pwd\n"
+    cmd_input+="invalid_cmd_$i\n"
+done
+cmd_input+="exit\n"
+
+output=$(printf "$cmd_input" | ./simple_shell 2>&1)
+
+if [[ "$output" == *"command not found"* ]] && [[ "$output" == *"$(pwd)"* ]]; then
+    echo "PASS: Shell survived 100 consecutive valid/invalid commands (SSH-NF-002)."
+else
+    echo "FAIL: Reliability test failed"
+    exit 1
+fi
