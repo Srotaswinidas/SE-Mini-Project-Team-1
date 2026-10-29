@@ -46,41 +46,48 @@ static int read_line(char *buf, size_t size)
 }
 
 /* Helper to pad spaces around |, <, and > so strtok can tokenize them cleanly */
+
+/* Add spaces around operators without overflowing the destination buffer. */
 static void normalize_operators(const char *src, char *dst, size_t dst_size)
 {
     size_t j = 0;
-    for (size_t i = 0; src[i] != '\0' && j + 2 < dst_size; i++)
+
+    if (src == NULL || dst == NULL || dst_size == 0)
+        return;
+
+    for (size_t i = 0; src[i] != '\0'; i++)
     {
         if (src[i] == '|' || src[i] == '<' || src[i] == '>')
         {
             if (j > 0 && dst[j - 1] != ' ' && dst[j - 1] != '\t')
+            {
+                if (j + 1 >= dst_size)
+                    break;
                 dst[j++] = ' ';
+            }
+
+            if (j + 1 >= dst_size)
+                break;
             dst[j++] = src[i];
-            if (src[i + 1] != ' ' && src[i + 1] != '\t' && src[i + 1] != '\0')
+
+            if (src[i + 1] != ' ' &&
+                src[i + 1] != '\t' &&
+                src[i + 1] != '\0')
+            {
+                if (j + 1 >= dst_size)
+                    break;
                 dst[j++] = ' ';
+            }
         }
         else
         {
+            if (j + 1 >= dst_size)
+                break;
             dst[j++] = src[i];
         }
     }
-    dst[j] = '\0';
-}
 
-/* F-004: split the line into words. Returns word count, or -1 if malformed */
-static int parse(char *line, char **argv)
-{
-    int argc = 0;
-    char *tok = strtok(line, " \t");
-    while (tok != NULL)
-    {
-        if (argc >= MAX_ARGS - 1)
-            return -1; /* too many arguments */
-        argv[argc++] = tok;
-        tok = strtok(NULL, " \t");
-    }
-    argv[argc] = NULL;
-    return argc;
+    dst[j] = '\0';
 }
 
 /* SR-003: validate syntax for redirection and pipelines */
@@ -381,17 +388,27 @@ int main(void)
             continue;
         }
 
+        
         snprintf(copy, sizeof copy, "%s", line);
         normalize_operators(line, norm_line, sizeof norm_line);
         int argc = parse(norm_line, argv);
 
-        if (argc < 0 || (argc > 0 && strchr("&;", argv[0][0]) != NULL) || validate_syntax(argc, argv) != 0)
+        if (argc < 0)
         {
-            fprintf(stderr, "myshell: malformed command\n"); /* SR-003 */
+            fprintf(stderr, "myshell: malformed command\n");
             continue;
         }
+
+        if (argc > 0 &&
+            (strchr("&;", argv[0][0]) != NULL ||
+             validate_syntax(argc, argv) != 0))
+        {
+            fprintf(stderr, "myshell: malformed command\n");
+            continue;
+        }
+
         if (argc == 0)
-            continue; /* F-003 */
+            continue;
 
         add_to_history(copy);
 
