@@ -17,3 +17,7 @@ jobs:
 
       - name: Compile shell
         run: gcc -Wall -Wextra src/shell.c -o simple_shell
+
+      - name: Run Test Suite
+        run: bash run_all_tests.sh
+
