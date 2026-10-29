@@ -13,6 +13,32 @@
 
 static char *history[MAX_HISTORY];
 static int hist_count = 0;
+/* Retry waiting if a signal interrupts waitpid. */
+static void wait_for_child(pid_t pid)
+{
+    while (waitpid(pid, NULL, 0) < 0)
+    {
+        if (errno == EINTR)
+            continue;
+
+        if (errno != ECHILD)
+            perror("myshell: waitpid");
+
+        break;
+    }
+}
+
+/* Release all command history allocations. */
+static void cleanup_history(void)
+{
+    for (int i = 0; i < hist_count; i++)
+    {
+        free(history[i]);
+        history[i] = NULL;
+    }
+
+    hist_count = 0;
+}
 
 /* F-013: remember commands */
 static void add_to_history(const char *line)
@@ -109,12 +135,11 @@ static int validate_syntax(int argc, char **argv)
 /* F-009 to F-013: built-in commands. Returns 1 if the command was a built-in */
 static int run_builtin(int argc, char **argv)
 {
-    if (strcmp(argv[0], "exit") == 0)
-    {
-        for (int i = 0; i < hist_count; i++)
-            free(history[i]);
-        exit(0);
-    }
+   if (strcmp(argv[0], "exit") == 0)
+{
+    cleanup_history();
+    exit(0);
+}
     if (strcmp(argv[0], "cd") == 0)
     {
         const char *dir = (argc > 1) ? argv[1] : getenv("HOME");
@@ -279,7 +304,7 @@ static void execute_pipeline(int pipe_idx, char **argv)
         perror("myshell: fork");
         close(pipefd[0]);
         close(pipefd[1]);
-        waitpid(p1, NULL, 0);
+        wait_for_child(p1);
         return;
     }
     if (p2 == 0)
@@ -307,7 +332,7 @@ static void execute_pipeline(int pipe_idx, char **argv)
     close(pipefd[0]);
     close(pipefd[1]);
     waitpid(p1, NULL, 0);
-    waitpid(p2, NULL, 0);
+    wait_for_child(p2);
 }
 
 /* F-005 to F-008, F-014, F-015, SR-004: Execute a single command with redirection */
@@ -354,7 +379,7 @@ static void execute_command(int argc, char **argv)
         _exit(127);
     }
     int status;
-    waitpid(pid, &status, 0);
+   wait_for_child(pid);
 }
 
 int main(void)
@@ -371,10 +396,11 @@ int main(void)
 
         int r = read_line(line, sizeof line);
         if (r == 0)
-        {
-            printf("\n");
-            break;
-        }
+{
+    printf("\n");
+    cleanup_history();
+    break;
+}
         if (r == -1)
         {
             fprintf(stderr, "myshell: input too long (max %d characters)\n", MAX_INPUT);
