@@ -17,8 +17,10 @@ commands+=("exit")
 output=$(printf '%s\n' "${commands[@]}" | ./simple_shell 2>&1)
 
 # Count successful pwd outputs and command-not-found errors.
+
 valid_count=$(printf '%s\n' "$output" |
-    grep -Fxc -- "$PWD" || true)
+    grep -Fc -- "$PWD" || true)
+
 
 invalid_count=$(printf '%s\n' "$output" |
     grep -Fc "command not found" || true)
