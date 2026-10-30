@@ -363,6 +363,33 @@ static void execute_command(int argc, char **argv)
     int status;
     waitpid(pid, &status, 0);
 }
+/* F-004: Split the line into words safely. */
+static int parse(char *line, char **argv)
+{
+    int argc = 0;
+
+    if (line == NULL || argv == NULL)
+        return -1;
+
+    argv[0] = NULL;
+
+    char *tok = strtok(line, " \t");
+
+    while (tok != NULL)
+    {
+        if (argc >= MAX_ARGS - 1)
+        {
+            argv[argc] = NULL;
+            return -1;
+        }
+
+        argv[argc++] = tok;
+        tok = strtok(NULL, " \t");
+    }
+
+    argv[argc] = NULL;
+    return argc;
+}
 
 int main(void)
 {
