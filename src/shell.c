@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/wait.h>
+#include <signal.h>
 
 #define MAX_INPUT 1024
 #define MAX_ARGS 64
@@ -278,6 +279,9 @@ static void execute_pipeline(int pipe_idx, char **argv)
     }
     if (p1 == 0)
     {
+                if (signal(SIGINT, SIG_DFL) == SIG_ERR)
+            _exit(1);
+        
         close(pipefd[0]);
         dup2(pipefd[1], STDOUT_FILENO);
         close(pipefd[1]);
@@ -309,6 +313,9 @@ static void execute_pipeline(int pipe_idx, char **argv)
     }
     if (p2 == 0)
     {
+                if (signal(SIGINT, SIG_DFL) == SIG_ERR)
+            _exit(1);
+        
         close(pipefd[1]);
         dup2(pipefd[0], STDIN_FILENO);
         close(pipefd[0]);
@@ -365,6 +372,9 @@ static void execute_command(int argc, char **argv)
     }
     if (pid == 0)
     {
+        if (signal(SIGINT, SIG_DFL) == SIG_ERR)
+            _exit(1);
+        
         if (apply_redirection(infile, outfile) < 0)
             _exit(1);
 
@@ -384,7 +394,14 @@ static void execute_command(int argc, char **argv)
 
 int main(void)
 {
-    char line[MAX_INPUT + 2];
+    /* Keep the shell running when Ctrl+C is pressed */
+    if (signal(SIGINT, SIG_IGN) == SIG_ERR)
+    {
+        perror("myshell: signal");
+        return 1;
+    }
+
+    char line[MAX_INPUT + 2]; 
     char norm_line[MAX_INPUT * 2 + 2];
     char copy[MAX_INPUT + 2];
     char *argv[MAX_ARGS];
