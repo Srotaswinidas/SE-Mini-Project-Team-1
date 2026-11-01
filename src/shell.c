@@ -30,6 +30,20 @@ static void wait_for_child(pid_t pid)
     }
 }
 
+/* NF-003: explain why a command could not be started.
+ * Returns the exit code for the child: 127 = not found, 126 = found but not runnable. */
+static int report_exec_failure(const char *cmd)
+{
+    int err = errno;
+    if (err == ENOENT)
+    {
+        fprintf(stderr, "myshell: %s: command not found\n", cmd);
+        return 127;
+    }
+    fprintf(stderr, "myshell: %s: %s\n", cmd, strerror(err));
+    return 126;
+}
+
 /* Release all command history allocations. */
 static void cleanup_history(void)
 {
@@ -128,59 +142,85 @@ static int read_line(char *buf, size_t size)
 }
 
 /* Helper to pad spaces around |, <, and > so strtok can tokenize them cleanly */
-
-/* Add spaces around operators without overflowing the destination buffer. */
 static void normalize_operators(const char *src, char *dst, size_t dst_size)
 {
     size_t j = 0;
-
-    if (src == NULL || dst == NULL || dst_size == 0)
-        return;
-
-    for (size_t i = 0; src[i] != '\0'; i++)
+    for (size_t i = 0; src[i] != '\0' && j + 2 < dst_size; i++)
     {
         if (src[i] == '|' || src[i] == '<' || src[i] == '>')
         {
             if (j > 0 && dst[j - 1] != ' ' && dst[j - 1] != '\t')
-            {
-                if (j + 1 >= dst_size)
-                    break;
                 dst[j++] = ' ';
-            }
-
-            if (j + 1 >= dst_size)
-                break;
             dst[j++] = src[i];
-
-            if (src[i + 1] != ' ' &&
-                src[i + 1] != '\t' &&
-                src[i + 1] != '\0')
-            {
-                if (j + 1 >= dst_size)
-                    break;
+            if (src[i + 1] != ' ' && src[i + 1] != '\t' && src[i + 1] != '\0')
                 dst[j++] = ' ';
-            }
         }
         else
         {
-            if (j + 1 >= dst_size)
-                break;
             dst[j++] = src[i];
         }
     }
-
     dst[j] = '\0';
 }
 
-/* SR-003: validate syntax for redirection and pipelines */
-static int validate_syntax(int argc, char **argv)
+/* F-004: split the line into words. Returns word count, or -1 if malformed */
+static int parse(char *line, char **argv)
 {
+    int argc = 0;
+    char *tok = strtok(line, " \t");
+    while (tok != NULL)
+    {
+        if (argc >= MAX_ARGS - 1)
+            return -1; /* too many arguments */
+        argv[argc++] = tok;
+        tok = strtok(NULL, " \t");
+    }
+    argv[argc] = NULL;
+    return argc;
+}
+
+/* SR-003 + NF-003: check the syntax of redirections and pipelines.
+ * Returns NULL if the command is fine, otherwise a short reason to show the user. */
+static const char *syntax_problem(int argc, char **argv)
+{
+    if (argc > 0 && strchr("&;", argv[0][0]) != NULL)
+        return "'&' and ';' are not supported";
+    for (int i = 0; i < argc; i++)
+        if (strcmp(argv[i], ";") == 0 || strcmp(argv[i], "&") == 0)
+            return "'&' and ';' are not supported";
+
+    /* a missing command or file name next to an operator */
+    for (int i = 0; i < argc; i++)
+    {
+        int is_in = (strcmp(argv[i], "<") == 0);
+        int is_out = (strcmp(argv[i], ">") == 0);
+        int is_pipe = (strcmp(argv[i], "|") == 0);
+        if (is_in || is_out)
+        {
+            if (i == 0)
+                return is_in ? "no command before '<'" : "no command before '>'";
+            if (i == argc - 1 || strcmp(argv[i + 1], ">") == 0 ||
+                strcmp(argv[i + 1], "<") == 0 || strcmp(argv[i + 1], "|") == 0)
+                return is_in ? "missing file name after '<'" : "missing file name after '>'";
+        }
+        else if (is_pipe)
+        {
+            if (i == 0)
+                return "no command before '|'";
+            if (i == argc - 1)
+                return "no command after '|'";
+            if (strcmp(argv[i + 1], "|") == 0)
+                return "empty command between two '|'";
+        }
+    }
+
+    /* only a two-command pipeline is supported, with '<' first and '>' last */
     int pipes = 0;
     for (int i = 0; i < argc; i++)
         if (strcmp(argv[i], "|") == 0)
             pipes++;
     if (pipes > 1)
-        return -1; /* only a two-command pipeline is supported */
+        return "only two commands can be joined with '|'";
 
     int seen_pipe = 0;
     for (int i = 0; i < argc; i++)
@@ -188,28 +228,11 @@ static int validate_syntax(int argc, char **argv)
         if (strcmp(argv[i], "|") == 0)
             seen_pipe = 1;
         else if (strcmp(argv[i], ">") == 0 && pipes == 1 && !seen_pipe)
-            return -1; /* '>' before '|': that output is the pipe */
+            return "'>' is only allowed on the last command of a pipeline";
         else if (strcmp(argv[i], "<") == 0 && seen_pipe)
-            return -1; /* '<' after '|': that input is the pipe */
+            return "'<' is only allowed on the first command of a pipeline";
     }
-    for (int i = 0; i < argc; i++)
-    {
-        if (strcmp(argv[i], ">") == 0 || strcmp(argv[i], "<") == 0)
-        {
-            if (i == 0 || i == argc - 1)
-                return -1; /* missing command or target file */
-            if (strcmp(argv[i + 1], ">") == 0 || strcmp(argv[i + 1], "<") == 0 || strcmp(argv[i + 1], "|") == 0)
-                return -1; /* consecutive operators */
-        }
-        else if (strcmp(argv[i], "|") == 0)
-        {
-            if (i == 0 || i == argc - 1)
-                return -1; /* missing left or right command */
-            if (strcmp(argv[i + 1], "|") == 0)
-                return -1; /* consecutive pipes */
-        }
-    }
-    return 0;
+    return NULL;
 }
 
 /* F-009 to F-013: built-in commands. Returns 1 if the command was a built-in */
@@ -222,9 +245,16 @@ static int run_builtin(int argc, char **argv)
 }
     if (strcmp(argv[0], "cd") == 0)
     {
+        if (argc > 2)
+        {
+            fprintf(stderr, "myshell: cd: too many arguments\n"); /* NF-003 */
+            return 1;
+        }
         const char *dir = (argc > 1) ? argv[1] : getenv("HOME");
-        if (dir == NULL || chdir(dir) != 0)
-            perror("myshell: cd");
+        if (dir == NULL)
+            fprintf(stderr, "myshell: cd: HOME is not set\n");
+        else if (chdir(dir) != 0)
+            fprintf(stderr, "myshell: cd: %s: %s\n", dir, strerror(errno));
         return 1;
     }
     if (strcmp(argv[0], "pwd") == 0)
@@ -388,11 +418,7 @@ static void execute_pipeline(int pipe_idx, char **argv)
 
         close_inherited_fds(); /* SR-005 */
         execvp(cmd1[0], cmd1);
-        if (errno == ENOENT)
-            fprintf(stderr, "myshell: %s: command not found\n", cmd1[0]);
-        else
-            perror("myshell");
-        _exit(127);
+        _exit(report_exec_failure(cmd1[0]));
     }
 
     pid_t p2 = fork();
@@ -427,11 +453,7 @@ static void execute_pipeline(int pipe_idx, char **argv)
 
         close_inherited_fds(); /* SR-005 */
         execvp(cmd2[0], cmd2);
-        if (errno == ENOENT)
-            fprintf(stderr, "myshell: %s: command not found\n", cmd2[0]);
-        else
-            perror("myshell");
-        _exit(127);
+        _exit(report_exec_failure(cmd2[0]));
     }
 
     close(pipefd[0]);
@@ -492,40 +514,9 @@ static void execute_command(int argc, char **argv)
 
         close_inherited_fds(); /* SR-005 */
         execvp(argv[0], argv);
-        if (errno == ENOENT)
-            fprintf(stderr, "myshell: %s: command not found\n", argv[0]);
-        else
-            perror("myshell");
-        _exit(127);
+        _exit(report_exec_failure(argv[0]));
     }
     wait_for_child(pid);
-}
-/* F-004: Split the line into words safely. */
-static int parse(char *line, char **argv)
-{
-    int argc = 0;
-
-    if (line == NULL || argv == NULL)
-        return -1;
-
-    argv[0] = NULL;
-
-    char *tok = strtok(line, " \t");
-
-    while (tok != NULL)
-    {
-        if (argc >= MAX_ARGS - 1)
-        {
-            argv[argc] = NULL;
-            return -1;
-        }
-
-        argv[argc++] = tok;
-        tok = strtok(NULL, " \t");
-    }
-
-    argv[argc] = NULL;
-    return argc;
 }
 
 int main(void)
@@ -568,27 +559,23 @@ int main(void)
             continue;
         }
 
-        
         snprintf(copy, sizeof copy, "%s", line);
         normalize_operators(line, norm_line, sizeof norm_line);
         int argc = parse(norm_line, argv);
 
         if (argc < 0)
         {
-            fprintf(stderr, "myshell: malformed command\n");
+            fprintf(stderr, "myshell: malformed command: too many words (at most %d)\n", MAX_ARGS - 1);
             continue;
         }
-
-        if (argc > 0 &&
-            (strchr("&;", argv[0][0]) != NULL ||
-             validate_syntax(argc, argv) != 0))
+        const char *problem = (argc > 0) ? syntax_problem(argc, argv) : NULL;
+        if (problem != NULL)
         {
-            fprintf(stderr, "myshell: malformed command\n");
+            fprintf(stderr, "myshell: malformed command: %s\n", problem); /* SR-003, NF-003 */
             continue;
         }
-
         if (argc == 0)
-            continue;
+            continue; /* F-003 */
 
         add_to_history(copy);
 
