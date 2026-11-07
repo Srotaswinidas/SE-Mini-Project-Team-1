@@ -1,102 +1,144 @@
 # Simple Shell (Command Line Interpreter)
 
-**Problem Statement No. 18** | Software Engineering Lab | UE24CS341A, PES University
+**Problem Statement No. 18** | Software Engineering Lab-1 | UE24CS341A  
+**PES University**
 
-A simple interactive shell for Linux/Unix-like systems, written in C using standard POSIX APIs. It accepts commands from the user, parses them, and executes them through the operating system. It is an educational project and not a replacement for bash or zsh.
+A simple interactive command-line shell for Linux/Unix-like systems, developed in C using POSIX system facilities. The project demonstrates how a shell reads user commands, processes input, executes programs and interacts with the operating system.
 
-## Team
+## Team Members
 
-| Name | Role |
-| --- | --- |
-| Srotaswini Das | Developer |
-| Sushant Bhat | Test Engineer |
-| SRK Akash | Product Owner |
-| Tarsh Choudhary | QA Lead |
-
-
-## Repository Contents
-
-| Deliverable | File | Status |
-| --- | --- | --- |
-| Software Requirements Specification (SRS) v1.0 | `SRS_Simple_Shell_Command_Line_Interpreter.docx` | Submitted |
-| Software Test Plan (STP) v1.0 | `Test_Plan_Simple_Shell.docx` | Submitted |
-
-The architecture document is prepared using the template provided by the instructor.
+| Name            | Role          |
+| --------------- | ------------- |
+| Srotaswini Das  | Developer     |
+| Sushanth Bhat   | Test Engineer |
+| SRK Akash       | Product Owner |
+| Tarsh Choudhary | QA Lead       |
 
 ## Project Overview
 
-The shell repeatedly runs this cycle: display a prompt, read a command line, parse it, execute it, wait for completion, show results or errors, and return to the prompt.
+The Simple Shell provides a text-based interface through which users can enter commands. It follows a Read-Eval-Print Loop (REPL):
 
-### Planned Features
+1. Display the shell prompt.
+2. Read user input.
+3. Parse the command and its arguments.
+4. Execute the requested command.
+5. Display output or error messages.
+6. Return to the prompt.
 
-Each feature maps to a requirement ID in the SRS (Section 4).
+## Features
 
-| Area | Features | Requirement IDs |
-| --- | --- | --- |
-| Prompt and input | Prompt display, reading a command line, ignoring empty input, argument parsing | SSH-F-001 to 004 |
-| Execution | External commands via fork/exec, PATH lookup, waiting for foreground processes, invalid command handling | SSH-F-005 to 008 |
-| Built-ins | `cd`, `pwd`, `help`, `exit` | SSH-F-009 to 012 |
-| History | Command history for the current session | SSH-F-013 |
-| I/O | Output redirection (`>`), input redirection (`<`), two-command pipelines (`\|`) | SSH-F-014 to 016 |
-| Robustness | Signal handling (Ctrl+C), session continuity after errors | SSH-F-017, 018 |
+The project scope for version 1.0 includes:
 
-### Non-Functional and Security Requirements
+- Interactive command prompt and input handling.
+- Command parsing and argument handling.
+- Execution of external commands using process creation and execution facilities.
+- Built-in commands: `cd`, `pwd`, `help` and `exit`.
+- Session-based command history.
+- Basic input (`<`) and output (`>`) redirection.
+- Basic two-command pipelines (`|`).
+- Foreground process execution.
+- Signal handling, including Ctrl+C.
+- Invalid command and error handling.
+- Input validation and resource management.
 
-- **Performance:** the prompt returns within 1 second for lightweight commands (90% of runs) (SSH-NF-001)
-- **Reliability:** the shell survives at least 100 consecutive valid and invalid commands (SSH-NF-002)
-- **Usability, maintainability and portability:** SSH-NF-003 to 005
-- **Security:** input length validation, bounds-safe parsing, rejection of malformed commands, safe handling of redirection failures, and resource cleanup (SSH-SR-001 to 005)
+Advanced shell features such as scripting, background job control, command substitution and wildcard expansion are outside the scope of version 1.0.
 
-In total there are 28 requirements: 18 functional, 5 non-functional and 5 security.
+## Technology Stack
 
-## Architecture Summary
+- **Language:** C
+- **Compiler:** GCC
+- **Build System:** Make
+- **Operating Environment:** Linux / Unix-like systems
+- **System Interfaces:** POSIX process, file and signal handling facilities.
 
-The planned modules below come from the RTM in the SRS (Section 8). The detailed design is in the architecture document.
+## Repository Structure
 
-| Module | Responsibility |
-| --- | --- |
-| UI Module | Prompt display |
-| Input Module | Reading command lines and length validation |
-| Parser | Tokenising commands and arguments, rejecting malformed input |
-| Execution Module | PATH lookup, fork/exec of external commands |
-| Process Module | Waiting for foreground processes |
-| Built-in Module | `cd`, `pwd`, `help`, `exit` |
-| History Module | Session command history |
-| I/O Module | Input and output redirection |
-| Pipe Module | Two-command pipelines |
-| Signal Module | Interrupt and termination handling |
-| Error Module / Main Loop | Error reporting and session continuity |
+| File / Directory                                 | Description                                    |
+| ------------------------------------------------ | ---------------------------------------------- |
+| `src/`                                           | Shell source code and header files             |
+| `Makefile`                                       | Build, test and cleanup commands               |
+| `run_all_tests.sh`                               | Test execution script                          |
+| `SRS_Simple_Shell_Command_Line_Interpreter.docx` | Software Requirements Specification            |
+| `Test_Plan_Simple_Shell.docx`                    | Software Test Plan                             |
+| `SAD_Unix_Shell.docx`                            | Software Architecture and Design Specification |
 
-## Technology and Environment
+## Build and Run
 
-- **Language:** C (gcc with `-Wall -Wextra`)
-- **APIs:** POSIX (`fork`, `exec`, `wait`/`waitpid`, `pipe`, `dup2`, `chdir`, `getcwd`, signals)
-- **Target platform:** Linux/Unix-like. The test plan uses Ubuntu 22.04 LTS or later (native or WSL2).
-- **Build:** `make`
+**Requirements:** GCC, Make and a Linux/Unix-like environment.
 
-## Testing
+Clone the repository:
 
-Testing follows the Software Test Plan.
+```bash
+git clone https://github.com/SrotaswiniDas/SE-Mini-Project-Team-1.git
+cd SE-Mini-Project-Team-1
+```
 
-- **Levels:** unit, integration, system and acceptance
-- **Types:** functional, regression, performance, reliability, usability, security and portability
-- **Tools:** Valgrind, AddressSanitizer/UndefinedBehaviorSanitizer, gdb, strace, lsof, cppcheck, clang-tidy, bash scripts and expect
-- **Traceability:** every requirement has at least one test case, listed in the SRS RTM and in STP Section 13 (TC-SH-01 to 18, TC-PERF-01, TC-REL-01, TC-USAB-01, TC-MAINT-01, TC-PORT-01, TC-SEC-01 to 05)
+Build the project:
+
+```bash
+make
+```
+
+Run the shell:
+
+```bash
+./myshell
+```
+
+Run the test script through Make:
+
+```bash
+make test
+```
+
+Build with AddressSanitizer and UndefinedBehaviorSanitizer:
+
+```bash
+make asan
+```
+
+Clean generated binaries:
+
+```bash
+make clean
+```
+
+## Testing and Verification
+
+Testing is organized around the requirements documented in the SRS and the test cases defined in the Software Test Plan.
+
+Testing areas include:
+
+- Functional testing
+- Integration and system testing
+- Regression testing
+- Performance and reliability testing
+- Usability and error-handling testing
+- Security and input-validation testing
+- Portability and build verification
+
+The Requirements Traceability Matrix (RTM) records the relationship between requirements and their corresponding test cases. Actual execution status and test results are maintained in the project test documentation.
+
+## Project Documentation
+
+The project documentation includes:
+
+1. **Software Requirements Specification (SRS):** Defines the functional, non-functional and security requirements.
+2. **Software Test Plan (STP):** Defines the testing approach, test cases, environment and verification activities.
+3. **Software Architecture and Design Specification (SAD):** Describes the system architecture, components, interfaces and design decisions.
+4. **Requirements Traceability Matrix (RTM):** Maps requirements to their corresponding test cases and verification status.
+
+## Project Demonstration
+
+**Demo Video:** [Insert the recorded project demonstration video link here]
 
 ## Project Status
 
-| Item | Status |
-| --- | --- |
-| SRS | Done |
-| Test Plan | Done |
-| Architecture | In progress |
-| Implementation | Not started (all RTM entries currently marked N) |
-
-
+The project is in its final documentation and review stage. Development is frozen for the final submission. Requirement verification status is maintained in the RTM, and the project documentation is being finalized.
 
 ## References
 
-- Simple Shell SRS v1.0
-- Simple Shell Software Test Plan v1.0
 - POSIX.1 (IEEE Std 1003.1)
-- IEEE 829 test documentation outline
+- Software Requirements Specification – Simple Shell
+- Software Test Plan – Simple Shell
+- Software Architecture and Design Specification – Simple Shell
